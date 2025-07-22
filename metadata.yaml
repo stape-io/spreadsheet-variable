@@ -1,5 +1,8 @@
 homepage: "https://stape.io/"
+documentation: "https://github.com/stape-io/spreadsheet-variable"
 versions:
+  - sha: b70a9a989dcc6607b05d4e47f38057024c2f2ab4
+    changeNotes: Added Sheet Name field to UI. Added tests.
   - sha: 23b0c6fd7552786a25685bd7595d8cbd0a2d80cf
     changeNotes: Getting Stape API key from headers.
   - sha: 1a8976d84016fdceb0a7f5da4171bfe467569a23
