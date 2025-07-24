@@ -16,8 +16,8 @@ The **Google Sheets Reader Variable** for Google Tag Manager Server-Side allows 
 4.  (Optional) Provide a **Sheet Name** (e.g., `Sheet1`). If not set, the first visible sheet is used.
 5.  Specify the **Cell** or **Range** using A1 notation (e.g. `A1`, `B2:C10`).
 6.  Choose your **Authentication** method.
-    - **Stape Google Connection** – Uses a simplified setup via Stape's connection. [Learn more](https://stape.io/blog/write-data-from-server-google-tag-manager-to-google-sheets#google-sheets-connection).
-    - **Own Google Credentials** – Uses Application Default Credentials from your GCP environment. [Learn more](https://cloud.google.com/docs/authentication/application-default-credentials).
+    - **Stape Google Connection** – Uses a simplified setup via Stape's connection. [Learn more](https://stape.io/blog/read-data-from-google-sheet-to-server-google-tag-manager#for-stape-users).
+    - **Own Google Credentials** – Uses Application Default Credentials from your GCP environment. [Learn more](https://stape.io/blog/read-data-from-google-sheet-to-server-google-tag-manager#for-non-stape-users).
 
 7.  Use the variable in your tags, triggers, or other variables within the server container.
 
@@ -41,8 +41,8 @@ The **Google Sheets Reader Variable** for Google Tag Manager Server-Side allows 
 ## Useful resources
 
 - [How to read data from Google Sheets in server Google Tag Manager](https://stape.io/blog/read-data-from-google-sheet-to-server-google-tag-manager)
-- [How to set up the Stape Google Connection](https://stape.io/blog/write-data-from-server-google-tag-manager-to-google-sheets#google-sheets-connection)
-- [How to set up the Own Google Credentials](https://cloud.google.com/docs/authentication/application-default-credentials)
+- [How to set up the Stape Google Connection](https://stape.io/blog/read-data-from-google-sheet-to-server-google-tag-manager#for-stape-users)
+- [How to set up the Own Google Credentials](https://stape.io/blog/read-data-from-google-sheet-to-server-google-tag-manager#for-non-stape-users)
 
 ## Open Source
 
