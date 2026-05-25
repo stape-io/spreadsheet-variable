@@ -1,6 +1,8 @@
-homepage: "https://stape.io/"
-documentation: "https://github.com/stape-io/spreadsheet-variable"
+homepage: 'https://stape.io/'
+documentation: 'https://github.com/stape-io/spreadsheet-variable'
 versions:
+  - sha: 976e749c44b8deeb76521ad95cff640c6c86baae
+    changeNotes: Update Stape Proxy endpoint to v2.
   - sha: b70a9a989dcc6607b05d4e47f38057024c2f2ab4
     changeNotes: Added Sheet Name field to UI. Added tests.
   - sha: 23b0c6fd7552786a25685bd7595d8cbd0a2d80cf
