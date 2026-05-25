@@ -15,6 +15,10 @@ ___INFO___
   "securityGroups": [],
   "displayName": "Google Sheets Reader",
   "description": "Read data from Google Sheets",
+  "categories": [
+    "ANALYTICS",
+    "CONVERSIONS"
+  ],
   "containerContexts": [
     "SERVER"
   ]
@@ -147,20 +151,18 @@ ___TEMPLATE_PARAMETERS___
 
 ___SANDBOXED_JS_FOR_SERVER___
 
-const JSON = require('JSON');
-const sendHttpRequest = require('sendHttpRequest');
 const encodeUriComponent = require('encodeUriComponent');
+const JSON = require('JSON');
 const getGoogleAuth = require('getGoogleAuth');
 const getRequestHeader = require('getRequestHeader');
+const getType = require('getType');
+const makeString = require('makeString');
+const sendHttpRequest = require('sendHttpRequest');
 
 /*==============================================================================
 ==============================================================================*/
 
-const spreadsheetId = getSpreadsheetId(data);
-const sheetRange = getSheetRange(data);
-const requestUrl = getUrl();
-
-return sendGetRequest();
+return readFromGoogleSheets(data);
 
 /*==============================================================================
   Vendor related functions
@@ -176,7 +178,11 @@ function getSheetRange(data) {
   return sheetName + range;
 }
 
-function getUrl() {
+function getUrl(data) {
+  const spreadsheetId = getSpreadsheetId(data);
+  const sheetRange = getSheetRange(data);
+  const sheetsPath = '/v4/spreadsheets/' + enc(spreadsheetId) + '/values/' + enc(sheetRange);
+
   if (data.authFlow === 'stape') {
     const containerIdentifier = getRequestHeader('x-gtm-identifier');
     const defaultDomain = getRequestHeader('x-gtm-default-domain');
@@ -189,23 +195,17 @@ function getUrl() {
       enc(defaultDomain) +
       '/stape-api/' +
       enc(containerApiKey) +
-      '/v1/spreadsheet/auth-proxy?spreadsheetId=' +
-      spreadsheetId +
-      '&range=' +
-      enc(sheetRange)
+      '/v2/spreadsheet?originalPath=' +
+      sheetsPath
     );
   }
 
-  return (
-    'https://content-sheets.googleapis.com/v4/spreadsheets/' +
-    spreadsheetId +
-    '/values/' +
-    enc(sheetRange)
-  );
+  return 'https://content-sheets.googleapis.com' + sheetsPath;
 }
 
-function sendGetRequest() {
-  const params = {
+function readFromGoogleSheets(data) {
+  const requestUrl = getUrl(data);
+  const options = {
     headers: { 'Content-Type': 'application/json' },
     method: 'GET'
   };
@@ -214,10 +214,10 @@ function sendGetRequest() {
     const auth = getGoogleAuth({
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
-    params.authorization = auth;
+    options.authorization = auth;
   }
 
-  return sendHttpRequest(requestUrl, params).then((result) => {
+  return sendHttpRequest(requestUrl, options).then((result) => {
     const bodyParsed = JSON.parse(result.body);
 
     if (result.statusCode >= 200 && result.statusCode < 400) {
@@ -244,7 +244,8 @@ function sendGetRequest() {
 ==============================================================================*/
 
 function enc(data) {
-  return encodeUriComponent(data || '');
+  if (['null', 'undefined'].indexOf(getType(data)) !== -1) data = '';
+  return encodeUriComponent(makeString(data));
 }
 
 
@@ -428,10 +429,11 @@ scenarios:
     setMockDataByActionType('range');
     Object.delete(mockData, 'sheetName');
 
-    const expectedSheetRange = mockData.range;
+    const EXPECTED_SHEET_RANGE = encodeUriComponent(mockData.range);
     mock('sendHttpRequest', (requestUrl, requestOptions, requestBody) => {
-      const parsedUrl = parseUrl(requestUrl);
-      assertThat(parsedUrl.searchParams.range).isEqualTo(expectedSheetRange);
+      const originalPath = requestUrl.split('originalPath=').pop();
+      const range = originalPath.split('/').pop();
+      assertThat(range).isEqualTo(EXPECTED_SHEET_RANGE);
       return Promise.create((resolve, reject) => resolve({ statusCode: 200, body: '{}' }));
     });
 
@@ -440,10 +442,11 @@ scenarios:
   code: |-
     setMockDataByActionType('cell');
 
-    const expectedSheetRange = "'" + mockData.sheetName + "'!" + mockData.cell;
+    const EXPECTED_SHEET_RANGE = "'" + encodeUriComponent(mockData.sheetName) + "'!" + encodeUriComponent(mockData.cell);
     mock('sendHttpRequest', (requestUrl, requestOptions, requestBody) => {
-      const parsedUrl = parseUrl(requestUrl);
-      assertThat(parsedUrl.searchParams.range).isEqualTo(expectedSheetRange);
+      const originalPath = requestUrl.split('originalPath=').pop();
+      const range = originalPath.split('/').pop();
+      assertThat(range).isEqualTo(EXPECTED_SHEET_RANGE);
       return Promise.create((resolve, reject) => resolve({ statusCode: 200, body: '{"values":[[]]}' }));
     });
 
@@ -452,10 +455,11 @@ scenarios:
   code: |-
     setMockDataByActionType('range');
 
-    const expectedSheetRange = "'" + mockData.sheetName + "'!" + mockData.range;
+    const EXPECTED_SHEET_RANGE = "'" + encodeUriComponent(mockData.sheetName) + "'!" + encodeUriComponent(mockData.range);
     mock('sendHttpRequest', (requestUrl, requestOptions, requestBody) => {
-      const parsedUrl = parseUrl(requestUrl);
-      assertThat(parsedUrl.searchParams.range).isEqualTo(expectedSheetRange);
+      const originalPath = requestUrl.split('originalPath=').pop();
+      const range = originalPath.split('/').pop();
+      assertThat(range).isEqualTo(EXPECTED_SHEET_RANGE);
       return Promise.create((resolve, reject) => resolve({ statusCode: 200, body: '{}' }));
     });
 
@@ -464,31 +468,32 @@ scenarios:
   code: |-
     setMockDataByActionType('object');
 
-    const expectedSheetRange = "'" + mockData.sheetName + "'!" + mockData.range;
+    const EXPECTED_SHEET_RANGE = "'" + encodeUriComponent(mockData.sheetName) + "'!" + encodeUriComponent(mockData.range);
     mock('sendHttpRequest', (requestUrl, requestOptions, requestBody) => {
-      const parsedUrl = parseUrl(requestUrl);
-      assertThat(parsedUrl.searchParams.range).isEqualTo(expectedSheetRange);
+      const originalPath = requestUrl.split('originalPath=').pop();
+      const range = originalPath.split('/').pop();
+      assertThat(range).isEqualTo(EXPECTED_SHEET_RANGE);
       return Promise.create((resolve, reject) => resolve({ statusCode: 200, body: '{"values":[[]]}' }));
     });
 
     runCode(mockData);
 - name: '[Stape Google Connection] Read Cell request is built and sent successfully'
   code: "setMockDataByActionType('cell');\n\nmock('sendHttpRequest', (requestUrl,\
-    \ requestOptions, requestBody) => {\n  assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v1/spreadsheet/auth-proxy?spreadsheetId=1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8&range='Sheet2'!A1\"\
+    \ requestOptions, requestBody) => {\n  assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v2/spreadsheet?originalPath=/v4/spreadsheets/1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8/values/'Sheet2'!A1\"\
     );\n  \n  assertThat(requestOptions).isEqualTo({ headers: { 'Content-Type': 'application/json'\
     \ }, method: 'GET' });\n  \n  return Promise.create((resolve, reject) => resolve({\
     \ statusCode: 200,  body: '{\"values\":[[\"foobar\"]]}' }));\n});\n\nrunCode(mockData).then((variableResult)\
     \ => {\n  assertThat(variableResult).isEqualTo('foobar');\n});"
 - name: '[Stape Google Connection] Read Range request is built and sent successfully'
   code: "setMockDataByActionType('range');\n\nmock('sendHttpRequest', (requestUrl,\
-    \ requestOptions, requestBody) => {\n  assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v1/spreadsheet/auth-proxy?spreadsheetId=1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8&range='Sheet2'!C1%3AD1\"\
+    \ requestOptions, requestBody) => {\n    assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v2/spreadsheet?originalPath=/v4/spreadsheets/1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8/values/'Sheet2'!C1%3AD1\"\
     );\n  \n  assertThat(requestOptions).isEqualTo({ headers: { 'Content-Type': 'application/json'\
     \ }, method: 'GET' });\n  \n  return Promise.create((resolve, reject) => resolve({\
     \ statusCode: 200,  body: '{\"values\":[[\"foo\",\"bar\"]]}' }));\n});\n\nrunCode(mockData).then((variableResult)\
     \ => {\n  assertThat(variableResult).isEqualTo([['foo', 'bar']]);\n});"
 - name: '[Stape Google Connection] Read Two Columns request is built and sent successfully'
   code: "setMockDataByActionType('object');\n\nmock('sendHttpRequest', (requestUrl,\
-    \ requestOptions, requestBody) => {\n  assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v1/spreadsheet/auth-proxy?spreadsheetId=1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8&range='Sheet2'!C%3AD\"\
+    \ requestOptions, requestBody) => {\n  assertThat(requestUrl).isEqualTo(\"https://expectedXGtmIdentifier.expectedXGtmDefaultDomain/stape-api/expectedXGtmApiKey/v2/spreadsheet?originalPath=/v4/spreadsheets/1VSbWfu1nrVUinb2kXHX9Gy599sBtue5wnaHFO8W4BS8/values/'Sheet2'!C%3AD\"\
     );\n  \n  assertThat(requestOptions).isEqualTo({ headers: { 'Content-Type': 'application/json'\
     \ }, method: 'GET' });\n  \n  return Promise.create((resolve, reject) => resolve({\
     \ statusCode: 200,  body: '{\"values\":[[\"foo\",\"bar\"]]}' }));\n});\n\nrunCode(mockData).then((variableResult)\
@@ -533,8 +538,9 @@ scenarios:
     });
 setup: "const Promise = require('Promise');\nconst JSON = require('JSON');\nconst\
   \ makeInteger = require('makeInteger');\nconst Object = require('Object');\nconst\
-  \ callLater = require('callLater');\nconst parseUrl = require('parseUrl');\n\nconst\
-  \ mergeObj = (target, source) => {\n  for (const key in source) {\n    if (source.hasOwnProperty(key))\
+  \ callLater = require('callLater');\nconst parseUrl = require('parseUrl');\nconst\
+  \ encodeUriComponent = require('encodeUriComponent');\n\nconst mergeObj = (target,\
+  \ source) => {\n  for (const key in source) {\n    if (source.hasOwnProperty(key))\
   \ target[key] = source[key];\n  }\n  return target;\n};\n\nconst mockData = {};\n\
   \nconst setMockDataByActionType = (actionType, objToBeMerged) => {\n  const actionTypes\
   \ = {\n    cell: {\n      type: 'cell',\n      sheetName: 'Sheet2',\n      cell:\
@@ -556,6 +562,8 @@ setup: "const Promise = require('Promise');\nconst JSON = require('JSON');\ncons
 
 ___NOTES___
 
-Created on 04/04/2022, 15:59:37
+2026-05-25 - Change Notes:
+  - Update Stape Proxy endpoint to v2.
 
+Created on 04/04/2022, 15:59:37
 
