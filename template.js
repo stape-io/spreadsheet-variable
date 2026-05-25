@@ -1,17 +1,15 @@
-const JSON = require('JSON');
-const sendHttpRequest = require('sendHttpRequest');
 const encodeUriComponent = require('encodeUriComponent');
+const JSON = require('JSON');
 const getGoogleAuth = require('getGoogleAuth');
 const getRequestHeader = require('getRequestHeader');
+const getType = require('getType');
+const makeString = require('makeString');
+const sendHttpRequest = require('sendHttpRequest');
 
 /*==============================================================================
 ==============================================================================*/
 
-const spreadsheetId = getSpreadsheetId(data);
-const sheetRange = getSheetRange(data);
-const requestUrl = getUrl();
-
-return sendGetRequest();
+return readFromGoogleSheets(data);
 
 /*==============================================================================
   Vendor related functions
@@ -27,7 +25,11 @@ function getSheetRange(data) {
   return sheetName + range;
 }
 
-function getUrl() {
+function getUrl(data) {
+  const spreadsheetId = getSpreadsheetId(data);
+  const sheetRange = getSheetRange(data);
+  const sheetsPath = '/v4/spreadsheets/' + enc(spreadsheetId) + '/values/' + enc(sheetRange);
+
   if (data.authFlow === 'stape') {
     const containerIdentifier = getRequestHeader('x-gtm-identifier');
     const defaultDomain = getRequestHeader('x-gtm-default-domain');
@@ -40,23 +42,17 @@ function getUrl() {
       enc(defaultDomain) +
       '/stape-api/' +
       enc(containerApiKey) +
-      '/v1/spreadsheet/auth-proxy?spreadsheetId=' +
-      spreadsheetId +
-      '&range=' +
-      enc(sheetRange)
+      '/v2/spreadsheet?originalPath=' +
+      sheetsPath
     );
   }
 
-  return (
-    'https://content-sheets.googleapis.com/v4/spreadsheets/' +
-    spreadsheetId +
-    '/values/' +
-    enc(sheetRange)
-  );
+  return 'https://content-sheets.googleapis.com' + sheetsPath;
 }
 
-function sendGetRequest() {
-  const params = {
+function readFromGoogleSheets(data) {
+  const requestUrl = getUrl(data);
+  const options = {
     headers: { 'Content-Type': 'application/json' },
     method: 'GET'
   };
@@ -65,10 +61,10 @@ function sendGetRequest() {
     const auth = getGoogleAuth({
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
-    params.authorization = auth;
+    options.authorization = auth;
   }
 
-  return sendHttpRequest(requestUrl, params).then((result) => {
+  return sendHttpRequest(requestUrl, options).then((result) => {
     const bodyParsed = JSON.parse(result.body);
 
     if (result.statusCode >= 200 && result.statusCode < 400) {
@@ -95,5 +91,6 @@ function sendGetRequest() {
 ==============================================================================*/
 
 function enc(data) {
-  return encodeUriComponent(data || '');
+  if (['null', 'undefined'].indexOf(getType(data)) !== -1) data = '';
+  return encodeUriComponent(makeString(data));
 }
